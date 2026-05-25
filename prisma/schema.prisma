@@ -1,0 +1,149 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  user
+  admin
+}
+
+enum UserStatus {
+  active
+  banned
+  deleted
+}
+
+enum VerificationPurpose {
+  register
+  reset
+  change_email
+}
+
+model User {
+  id              BigInt       @id @default(autoincrement()) @db.UnsignedBigInt
+  email           String       @unique @db.VarChar(190)
+  emailVerifiedAt DateTime?    @map("email_verified_at")
+  passwordHash    String       @map("password_hash") @db.VarChar(255)
+  nickname        String       @db.VarChar(50)
+  avatarId        Int          @default(1) @map("avatar_id") // 1-30, maps to /avatar/a-{id}.webp
+  role            UserRole     @default(user)
+  status          UserStatus   @default(active)
+  dailyQuota      Int          @default(200) @map("daily_quota")
+  privacyMode     Boolean      @default(false) @map("privacy_mode")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  translations    Translation[]
+  refreshTokens   RefreshToken[]
+  glossaries      Glossary[]
+
+  @@map("users")
+}
+
+model EmailVerification {
+  id          BigInt             @id @default(autoincrement()) @db.UnsignedBigInt
+  email       String             @db.VarChar(190)
+  codeHash    String             @map("code_hash") @db.VarChar(255)
+  purpose     VerificationPurpose
+  expiresAt   DateTime           @map("expires_at")
+  attempts    Int                @default(0) @db.UnsignedTinyInt
+  consumedAt  DateTime?          @map("consumed_at")
+  createdAt   DateTime           @default(now()) @map("created_at")
+
+  @@index([email])
+  @@map("email_verifications")
+}
+
+model RefreshToken {
+  id         BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  userId     BigInt    @map("user_id") @db.UnsignedBigInt
+  tokenHash  String    @map("token_hash") @db.VarChar(255)
+  userAgent  String?   @map("user_agent") @db.VarChar(255)
+  ip         String?   @db.VarChar(45)
+  expiresAt  DateTime  @map("expires_at")
+  revokedAt  DateTime? @map("revoked_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  lastUsedAt DateTime  @default(now()) @map("last_used_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model Translation {
+  id             BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  userId         BigInt?   @map("user_id") @db.UnsignedBigInt
+  sourceLang     String    @map("source_lang") @db.VarChar(10)
+  targetLang     String    @map("target_lang") @db.VarChar(10)
+  sourceText     String?   @map("source_text") @db.MediumText
+  translatedText String?   @map("translated_text") @db.MediumText
+  mode           String    @db.VarChar(30)
+  model          String    @db.VarChar(50)
+  tokensUsed     Int       @default(0) @map("tokens_used")
+  latencyMs      Int       @default(0) @map("latency_ms")
+  ip             String?   @db.VarChar(255)
+  userAgent      String?   @map("user_agent") @db.VarChar(255)
+  flagged        Boolean   @default(false)
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
+  @@map("translations")
+}
+
+model Glossary {
+  id         BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  userId     BigInt   @map("user_id") @db.UnsignedBigInt
+  sourceTerm String   @map("source_term") @db.VarChar(255)
+  targetTerm String   @map("target_term") @db.VarChar(255)
+  langPair   String   @map("lang_pair") @db.VarChar(20)
+  note       String?  @db.VarChar(500)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, langPair])
+  @@map("glossaries")
+}
+
+model UsageStat {
+  id     BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  userId BigInt   @map("user_id") @db.UnsignedBigInt
+  date   DateTime @db.Date
+  count  Int      @default(0)
+  tokens Int      @default(0)
+
+  @@unique([userId, date])
+  @@map("usage_stats")
+}
+
+model AuditLog {
+  id         BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  adminId    BigInt   @map("admin_id") @db.UnsignedBigInt
+  action     String   @db.VarChar(100)
+  targetType String?  @map("target_type") @db.VarChar(50)
+  targetId   BigInt?  @map("target_id") @db.UnsignedBigInt
+  payload    Json?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([adminId, createdAt])
+  @@map("audit_logs")
+}
+
+model SystemConfig {
+  id          BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  configKey   String   @unique @map("config_key") @db.VarChar(100)
+  configValue String   @map("config_value") @db.Text
+  updatedBy   BigInt?  @map("updated_by") @db.UnsignedBigInt
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("system_configs")
+}

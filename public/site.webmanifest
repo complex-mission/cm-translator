@@ -1,0 +1,16 @@
+{
+  "name": "CM Translator",
+  "short_name": "CM Translator",
+  "description": "AI-powered translation with real-time streaming",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a1628",
+  "theme_color": "#0a1628",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
