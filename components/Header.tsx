@@ -98,7 +98,7 @@ export default function Header() {
               )}
             </div>
           ) : (
-            <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
               <Link href="/auth/login" className="px-3 py-1.5 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">
                 {t('nav.signin')}
               </Link>

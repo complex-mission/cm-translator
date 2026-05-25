@@ -82,3 +82,7 @@ textarea {
   min-height: 120px;
   max-height: 400px;
 }
+
+/* Hide scrollbar utility */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }

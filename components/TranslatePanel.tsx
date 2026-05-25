@@ -162,7 +162,7 @@ export default function TranslatePage() {
   return (
     <div className="max-w-6xl mx-auto px-4 py-6">
       {/* Mode selector */}
-      <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-2">
+      <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-2 scrollbar-hide">
         {TRANSLATION_MODES.map((m) => {
           const Icon = m.iconComponent;
           return (
@@ -177,7 +177,7 @@ export default function TranslatePage() {
               title={getModeDesc(m.id)}
             >
               <Icon className="w-4 h-4" />
-              <span>{getModeName(m.id)}</span>
+              <span className="hidden sm:inline">{getModeName(m.id)}</span>
             </button>
           );
         })}
@@ -191,7 +191,7 @@ export default function TranslatePage() {
             <select
               value={sourceLang}
               onChange={(e) => setSourceLang(e.target.value)}
-              className="bg-transparent text-sm font-medium text-[var(--text-primary)] outline-none cursor-pointer"
+              className="bg-transparent text-sm font-medium text-[var(--text-primary)] outline-none cursor-pointer max-w-[120px] sm:max-w-none"
             >
               {SUPPORTED_LANGUAGES.map((l) => (
                 <option key={l.code} value={l.code}>{getLangName(l.code)}</option>
@@ -247,7 +247,7 @@ export default function TranslatePage() {
               <select
                 value={targetLang}
                 onChange={(e) => setTargetLang(e.target.value)}
-                className="bg-transparent text-sm font-medium text-[var(--text-primary)] outline-none cursor-pointer"
+                className="bg-transparent text-sm font-medium text-[var(--text-primary)] outline-none cursor-pointer max-w-[120px] sm:max-w-none"
               >
                 {SUPPORTED_LANGUAGES.filter((l) => l.code !== 'auto').map((l) => (
                   <option key={l.code} value={l.code}>{getLangName(l.code)}</option>

@@ -15,8 +15,8 @@ export default function LanguageSwitcher() {
         className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-primary)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] text-sm transition-colors"
       >
         <Globe className="w-4 h-4" />
-        <span>{LOCALE_LABELS[locale]}</span>
-        <ChevronDown className="w-3 h-3" />
+        <span className="hidden sm:inline">{LOCALE_LABELS[locale]}</span>
+        <ChevronDown className="w-3 h-3 hidden sm:block" />
       </button>
       {open && (
         <>
