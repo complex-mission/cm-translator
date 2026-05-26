@@ -21,9 +21,15 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({
+  children,
+  hasSessionCookie = true,
+}: {
+  children: ReactNode;
+  hasSessionCookie?: boolean;
+}) {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(hasSessionCookie);
 
   const refresh = async () => {
     try {
@@ -32,7 +38,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const data = await res.json();
         setUser(data.user);
       } else {
-        // Try refresh token
         const refreshRes = await fetch('/api/auth/refresh', { method: 'POST' });
         if (refreshRes.ok) {
           const meRes = await fetch('/api/auth/me');
@@ -53,7 +58,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  useEffect(() => { refresh(); }, []);
+  useEffect(() => {
+    if (hasSessionCookie) refresh();
+  }, [hasSessionCookie]);
 
   const login = async (email: string, password: string) => {
     const res = await fetch('/api/auth/login', {

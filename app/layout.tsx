@@ -116,6 +116,9 @@ async function resolveLocale(): Promise<Locale> {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const locale = await resolveLocale();
+  const cookieStore = await cookies();
+  const hasSessionCookie = !!cookieStore.get('access_token')?.value
+    || !!cookieStore.get('refresh_token')?.value;
 
   return (
     <html lang={locale} suppressHydrationWarning>
@@ -160,7 +163,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         />
       </head>
       <body className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)]">
-        <Providers initialLocale={locale}>{children}</Providers>
+        <Providers initialLocale={locale} hasSessionCookie={hasSessionCookie}>{children}</Providers>
       </body>
     </html>
   );

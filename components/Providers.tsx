@@ -8,14 +8,16 @@ import { I18nProvider, type Locale } from '@/lib/i18n';
 export function Providers({
   children,
   initialLocale,
+  hasSessionCookie,
 }: {
   children: ReactNode;
   initialLocale: Locale;
+  hasSessionCookie: boolean;
 }) {
   return (
     <ThemeProvider>
       <I18nProvider initialLocale={initialLocale}>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider hasSessionCookie={hasSessionCookie}>{children}</AuthProvider>
       </I18nProvider>
     </ThemeProvider>
   );

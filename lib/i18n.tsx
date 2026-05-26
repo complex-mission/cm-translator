@@ -23,7 +23,7 @@ const translations: Record<Locale, Record<string, string>> = {
 
     // Home
     'home.title': 'AI Translation',
-    'home.subtitle': 'Fast, accurate translations with real-time streaming results.',
+    'home.subtitle': '20+ languages · 5 translation modes · 200 translations/day after sign up',
     'home.footer': '© 2026 CM Translator · Complex Mission',
 
     // TranslatePanel
@@ -36,6 +36,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'panel.copy': 'Copy',
     'panel.tryagain': 'Try again',
     'panel.guest': 'Guest: {max} chars/translation, 10 translations/day.',
+    'panel.dict_mode': 'Dictionary',
     'panel.signup_hint': 'Sign up',
     'panel.signup_suffix': ' for 5000 chars and 200 translations/day.',
     'panel.swap': 'Swap languages',
@@ -224,7 +225,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'nav.signup': '注册',
 
     'home.title': 'AI 翻译',
-    'home.subtitle': '快速、准确的翻译，实时流式输出结果。',
+    'home.subtitle': '20+ 种语言 · 5 种翻译模式 · 注册后每天 200 次',
     'home.footer': '© 2026 CM Translator · Complex Mission',
 
     'panel.placeholder': '输入要翻译的文本...',
@@ -236,6 +237,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'panel.copy': '复制',
     'panel.tryagain': '重试',
     'panel.guest': '访客：每次最多 {max} 字符，每天 10 次翻译。',
+    'panel.dict_mode': '词典',
     'panel.signup_hint': '注册',
     'panel.signup_suffix': ' 可享 5000 字符和每天 200 次翻译。',
     'panel.swap': '交换语言',
@@ -411,7 +413,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'nav.signup': '新規登録',
 
     'home.title': 'AI 翻訳',
-    'home.subtitle': '高速・高精度な翻訳をリアルタイムでストリーミング表示。',
+    'home.subtitle': '20+ 言語 · 5 種類の翻訳モード · 登録後は1日200回まで',
     'home.footer': '© 2026 CM Translator · Complex Mission',
 
     'panel.placeholder': '翻訳するテキストを入力...',
@@ -423,6 +425,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'panel.copy': 'コピー',
     'panel.tryagain': '再試行',
     'panel.guest': 'ゲスト：1回あたり最大 {max} 文字、1日10回まで。',
+    'panel.dict_mode': '辞書',
     'panel.signup_hint': '新規登録',
     'panel.signup_suffix': ' で 5000 文字・1日200回に。',
     'panel.swap': '言語を入れ替え',
@@ -598,7 +601,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'nav.signup': '회원가입',
 
     'home.title': 'AI 번역',
-    'home.subtitle': '빠르고 정확한 번역. 실시간 스트리밍 결과.',
+    'home.subtitle': '20+ 개 언어 · 5가지 번역 모드 · 가입 후 하루 200회',
     'home.footer': '© 2026 CM Translator · Complex Mission',
 
     'panel.placeholder': '번역할 텍스트를 입력하세요...',
@@ -610,6 +613,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'panel.copy': '복사',
     'panel.tryagain': '다시 시도',
     'panel.guest': '게스트: 최대 {max}자/번역, 하루 10회.',
+    'panel.dict_mode': '사전',
     'panel.signup_hint': '회원가입',
     'panel.signup_suffix': ' 시 5000자, 하루 200회 이용 가능.',
     'panel.swap': '언어 교환',

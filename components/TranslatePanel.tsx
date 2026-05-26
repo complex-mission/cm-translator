@@ -1,17 +1,13 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkBreaks from 'remark-breaks';
 import { useAuth } from '@/components/AuthProvider';
 import { useI18n } from '@/lib/i18n';
 import { SUPPORTED_LANGUAGES, TRANSLATION_MODES } from '@/lib/deepseek';
-import { ArrowRightLeft, Copy, Check, Square, Languages, Trash2 } from 'lucide-react';
-
-interface TranslationResult {
-  content: string;
-  done: boolean;
-  tokensUsed?: number;
-  latencyMs?: number;
-}
+import { ArrowRightLeft, Copy, Check, Square, Languages, Trash2, BookA } from 'lucide-react';
 
 export default function TranslatePage() {
   const { user, loading } = useAuth();
@@ -21,6 +17,7 @@ export default function TranslatePage() {
   const [sourceLang, setSourceLang] = useState('auto');
   const [targetLang, setTargetLang] = useState('en');
   const [mode, setMode] = useState('general');
+  const [effectiveMode, setEffectiveMode] = useState<string | null>(null);
   const [isTranslating, setIsTranslating] = useState(false);
   const [error, setError] = useState('');
   const [stats, setStats] = useState<{ tokensUsed: number; latencyMs: number } | null>(null);
@@ -149,6 +146,7 @@ export default function TranslatePage() {
     setTranslatedText('');
     setError('');
     setStats(null);
+    setEffectiveMode(null);
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -189,6 +187,7 @@ export default function TranslatePage() {
             }
             if (data.done) {
               setStats({ tokensUsed: data.tokensUsed || 0, latencyMs: data.latencyMs || 0 });
+              if (data.mode) setEffectiveMode(data.mode);
             }
           } catch {}
         }
@@ -240,7 +239,7 @@ export default function TranslatePage() {
   return (
     <div className="max-w-6xl mx-auto px-4 py-6">
       {/* Mode selector */}
-      <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-2 scrollbar-hide">
+      <div className="flex items-center justify-center sm:justify-start gap-2 mb-4 overflow-x-auto pb-2 scrollbar-hide">
         {TRANSLATION_MODES.map((m) => {
           const Icon = m.iconComponent;
           const isActive = mode === m.id;
@@ -315,6 +314,7 @@ export default function TranslatePage() {
                 setDetectedLang(null);
                 setTruncated(false);
                 setError('');
+                setEffectiveMode(null);
               }}
               className="flex items-center gap-1.5 text-xs text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors"
             >
@@ -373,9 +373,15 @@ export default function TranslatePage() {
               >
                 <ArrowRightLeft className="w-4 h-4" />
               </button>
+              {effectiveMode === 'dictionary' && mode !== 'dictionary' && (
+                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[var(--accent)]/10 text-[var(--accent)] text-xs font-medium">
+                  <BookA className="w-3 h-3" />
+                  {t('panel.dict_mode')}
+                </span>
+              )}
             </div>
             {stats && (
-              <span className="text-xs text-[var(--text-tertiary)]">
+              <span className="text-xs text-[var(--text-tertiary)] whitespace-nowrap">
                 {stats.latencyMs}ms · {stats.tokensUsed} {t('common.tokens')}
               </span>
             )}
@@ -389,8 +395,49 @@ export default function TranslatePage() {
               </div>
             )}
             {translatedText && (
-              <div className="whitespace-pre-wrap text-[var(--text-primary)] animate-fade-in">
-                {translatedText}
+              <div className="text-[var(--text-primary)] animate-fade-in break-words text-base leading-relaxed">
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm, remarkBreaks]}
+                  components={{
+                    p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                    strong: ({ children }) => (
+                      <strong className="text-[var(--accent)] font-semibold">{children}</strong>
+                    ),
+                    em: ({ children }) => <em className="italic">{children}</em>,
+                    ol: ({ children }) => (
+                      <ol className="list-decimal pl-5 sm:pl-6 space-y-1 mb-3 last:mb-0 marker:text-[var(--text-tertiary)]">
+                        {children}
+                      </ol>
+                    ),
+                    ul: ({ children }) => (
+                      <ul className="list-disc pl-5 sm:pl-6 space-y-1 mb-3 last:mb-0 marker:text-[var(--text-tertiary)]">
+                        {children}
+                      </ul>
+                    ),
+                    li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+                    code: ({ children }) => (
+                      <code className="text-xs px-1.5 py-0.5 rounded bg-[var(--bg-tertiary)] font-mono text-[var(--text-secondary)]">
+                        {children}
+                      </code>
+                    ),
+                    h1: ({ children }) => <h1 className="text-xl font-bold mb-2 mt-1">{children}</h1>,
+                    h2: ({ children }) => <h2 className="text-lg font-semibold mb-2 mt-1">{children}</h2>,
+                    h3: ({ children }) => <h3 className="text-base font-semibold mb-1.5 mt-1">{children}</h3>,
+                    blockquote: ({ children }) => (
+                      <blockquote className="border-l-2 border-[var(--border)] pl-3 italic text-[var(--text-secondary)] my-2">
+                        {children}
+                      </blockquote>
+                    ),
+                    a: ({ children, href }) => (
+                      <a href={href} target="_blank" rel="noopener noreferrer" className="text-[var(--accent)] hover:underline">
+                        {children}
+                      </a>
+                    ),
+                    hr: () => <hr className="my-3 border-[var(--border)]" />,
+                  }}
+                >
+                  {translatedText}
+                </ReactMarkdown>
               </div>
             )}
             {error && (
