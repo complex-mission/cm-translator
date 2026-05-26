@@ -27,6 +27,7 @@ export interface TranslateOptions {
 export interface TranslateStreamResult {
   stream: ReadableStream;
   controller: AbortController;
+  detectedLang?: string;
 }
 
 export async function translateStream(opts: TranslateOptions): Promise<TranslateStreamResult> {
@@ -37,8 +38,12 @@ export async function translateStream(opts: TranslateOptions): Promise<Translate
   const langName = getLanguageName(targetLang);
   const srcLangName = sourceLang === 'auto' ? 'the detected language' : getLanguageName(sourceLang);
 
+  const autoDetectInstruction = sourceLang === 'auto'
+    ? `IMPORTANT: First, detect the language of the source text. Output ONLY the 2-letter language code (e.g., "zh", "en", "ja", "ko", "fr", "de", "es", "pt", "ru", "ar", "it", "nl", "pl", "th", "vi", "id", "tr", "hi", "uk") on the first line by itself, then output the translation starting from the second line. Do NOT include any other text or labels.`
+    : '';
+
   const userMessage = sourceLang === 'auto'
-    ? `Translate the following text to ${langName}. Text:\n\n${text}`
+    ? `Translate the following text to ${langName}. ${autoDetectInstruction} Text:\n\n${text}`
     : `Translate the following text from ${srcLangName} to ${langName}. Text:\n\n${text}`;
 
   const startTime = Date.now();
@@ -78,6 +83,10 @@ export async function translateStream(opts: TranslateOptions): Promise<Translate
     async start(streamController) {
       const encoder = new TextEncoder();
       let buffer = '';
+      let langDetected = false;
+      let langBuffer = '';
+      let isFirstLine = true;
+      let skipNextNewline = false;
 
       try {
         while (true) {
@@ -98,8 +107,35 @@ export async function translateStream(opts: TranslateOptions): Promise<Translate
               const parsed = JSON.parse(data);
               const content = parsed.choices?.[0]?.delta?.content;
               if (content) {
-                fullTranslation += content;
-                streamController.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
+                if (sourceLang === 'auto' && !langDetected) {
+                  langBuffer += content;
+                  const langMatch = langBuffer.match(/^([a-z]{2})\s*\n/);
+                  if (langMatch) {
+                    const detectedLang = langMatch[1];
+                    if (SUPPORTED_LANGUAGES.find((l) => l.code === detectedLang)) {
+                      langDetected = true;
+                      streamController.enqueue(encoder.encode(`data: ${JSON.stringify({ detectedLang })}\n\n`));
+                      const remaining = langBuffer.slice(langMatch[0].length);
+                      if (remaining) {
+                        fullTranslation += remaining;
+                        streamController.enqueue(encoder.encode(`data: ${JSON.stringify({ content: remaining })}\n\n`));
+                      }
+                      skipNextNewline = true;
+                    }
+                  } else if (langBuffer.length > 5) {
+                    langDetected = true;
+                    fullTranslation += langBuffer;
+                    streamController.enqueue(encoder.encode(`data: ${JSON.stringify({ content: langBuffer })}\n\n`));
+                  }
+                } else {
+                  if (skipNextNewline && content === '\n') {
+                    skipNextNewline = false;
+                    continue;
+                  }
+                  skipNextNewline = false;
+                  fullTranslation += content;
+                  streamController.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
+                }
               }
               if (parsed.usage) {
                 tokensUsed = parsed.usage.total_tokens || 0;
@@ -108,6 +144,11 @@ export async function translateStream(opts: TranslateOptions): Promise<Translate
               // skip malformed chunks
             }
           }
+        }
+
+        if (sourceLang === 'auto' && !langDetected && langBuffer) {
+          fullTranslation += langBuffer;
+          streamController.enqueue(encoder.encode(`data: ${JSON.stringify({ content: langBuffer })}\n\n`));
         }
 
         const latencyMs = Date.now() - startTime;

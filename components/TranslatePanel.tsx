@@ -31,10 +31,6 @@ export default function TranslatePage() {
   const MAX_CHARS = user ? 5000 : 1000;
 
   useEffect(() => {
-    const browserLang = navigator.language.split('-')[0];
-    if (SUPPORTED_LANGUAGES.find((l) => l.code === browserLang)) {
-      setTargetLang(browserLang);
-    }
     try {
       const raw = localStorage.getItem('prefill');
       if (raw) {
@@ -45,9 +41,43 @@ export default function TranslatePage() {
         if (data.mode) setMode(data.mode);
         setCharCount(data.text?.length || 0);
         localStorage.removeItem('prefill');
+        return;
       }
     } catch {}
+
+    try {
+      const savedSourceLang = localStorage.getItem('sourceLang');
+      const savedTargetLang = localStorage.getItem('targetLang');
+      const savedMode = localStorage.getItem('translationMode');
+      if (savedSourceLang && SUPPORTED_LANGUAGES.find((l) => l.code === savedSourceLang)) {
+        setSourceLang(savedSourceLang);
+      }
+      if (savedTargetLang && SUPPORTED_LANGUAGES.find((l) => l.code === savedTargetLang && l.code !== 'auto')) {
+        setTargetLang(savedTargetLang);
+      } else {
+        const browserLang = navigator.language.split('-')[0];
+        if (SUPPORTED_LANGUAGES.find((l) => l.code === browserLang)) {
+          setTargetLang(browserLang);
+        }
+      }
+      if (savedMode && TRANSLATION_MODES.find((m) => m.id === savedMode)) {
+        setMode(savedMode);
+      }
+    } catch {
+      const browserLang = navigator.language.split('-')[0];
+      if (SUPPORTED_LANGUAGES.find((l) => l.code === browserLang)) {
+        setTargetLang(browserLang);
+      }
+    }
   }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('sourceLang', sourceLang);
+      localStorage.setItem('targetLang', targetLang);
+      localStorage.setItem('translationMode', mode);
+    } catch {}
+  }, [sourceLang, targetLang, mode]);
 
   const handleInput = (value: string) => {
     if (value.length <= MAX_CHARS) {
@@ -106,6 +136,9 @@ export default function TranslatePage() {
           if (!line.startsWith('data: ')) continue;
           try {
             const data = JSON.parse(line.slice(6));
+            if (data.detectedLang) {
+              setSourceLang(data.detectedLang);
+            }
             if (data.content) {
               setTranslatedText((prev) => prev + data.content);
             }
@@ -190,7 +223,14 @@ export default function TranslatePage() {
           <div className="flex items-center justify-between px-4 py-2.5 border-b border-[var(--border)]">
             <select
               value={sourceLang}
-              onChange={(e) => setSourceLang(e.target.value)}
+              onChange={(e) => {
+                const newSourceLang = e.target.value;
+                setSourceLang(newSourceLang);
+                if (newSourceLang !== 'auto' && newSourceLang === targetLang) {
+                  const available = SUPPORTED_LANGUAGES.find((l) => l.code !== 'auto' && l.code !== newSourceLang);
+                  if (available) setTargetLang(available.code);
+                }
+              }}
               className="bg-transparent text-sm font-medium text-[var(--text-primary)] outline-none cursor-pointer max-w-[120px] sm:max-w-none"
             >
               {SUPPORTED_LANGUAGES.map((l) => (
@@ -246,10 +286,16 @@ export default function TranslatePage() {
             <div className="flex items-center gap-2">
               <select
                 value={targetLang}
-                onChange={(e) => setTargetLang(e.target.value)}
+                onChange={(e) => {
+                  const newTargetLang = e.target.value;
+                  setTargetLang(newTargetLang);
+                  if (sourceLang !== 'auto' && sourceLang === newTargetLang) {
+                    setSourceLang('auto');
+                  }
+                }}
                 className="bg-transparent text-sm font-medium text-[var(--text-primary)] outline-none cursor-pointer max-w-[120px] sm:max-w-none"
               >
-                {SUPPORTED_LANGUAGES.filter((l) => l.code !== 'auto').map((l) => (
+                {SUPPORTED_LANGUAGES.filter((l) => l.code !== 'auto' && l.code !== sourceLang).map((l) => (
                   <option key={l.code} value={l.code}>{getLangName(l.code)}</option>
                 ))}
               </select>
