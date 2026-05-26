@@ -14,7 +14,7 @@ interface TranslationResult {
 }
 
 export default function TranslatePage() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const { t } = useI18n();
   const [sourceText, setSourceText] = useState('');
   const [translatedText, setTranslatedText] = useState('');
@@ -364,7 +364,7 @@ export default function TranslatePage() {
       </div>
 
       {/* Guest notice */}
-      {!user && (
+      {!user && !loading && (
         <div className="mt-4 text-center text-sm text-[var(--text-tertiary)]">
           <span>{t('panel.guest', { max: String(MAX_CHARS) })} </span>
           <a href="/auth/register" className="text-[var(--accent)] hover:underline">{t('panel.signup_hint')}</a>
