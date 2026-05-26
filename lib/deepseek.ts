@@ -58,6 +58,7 @@ export async function translateStream(opts: TranslateOptions): Promise<Translate
       stream: true,
       stream_options: { include_usage: true },
       temperature: 0.3,
+      thinking: { type: 'disabled' },
     }),
     signal: controller.signal,
   });
@@ -151,6 +152,7 @@ export async function translateSync(opts: TranslateOptions) {
         { role: 'user', content: userMessage },
       ],
       temperature: 0.3,
+      thinking: { type: 'disabled' },
     }),
   });
 

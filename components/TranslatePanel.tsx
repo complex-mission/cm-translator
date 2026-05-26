@@ -305,7 +305,7 @@ export default function TranslatePage() {
             className="w-full p-4 bg-transparent text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] resize-none outline-none min-h-[200px] lg:min-h-[300px]"
           />
 
-          <div className="flex items-center justify-between px-4 py-2 border-t border-[var(--border)]">
+          <div className="flex items-center justify-between px-4 py-2 border-t border-[var(--border)] min-h-[52px]">
             <button
               onClick={() => {
                 setSourceText('');
@@ -406,7 +406,7 @@ export default function TranslatePage() {
             )}
           </div>
 
-          <div className="flex items-center justify-end px-4 py-2 border-t border-[var(--border)]">
+          <div className="flex items-center justify-end px-4 py-2 border-t border-[var(--border)] min-h-[52px]">
             <button
               onClick={copyTranslation}
               disabled={!translatedText}
