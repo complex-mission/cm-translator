@@ -79,10 +79,38 @@ export default function TranslatePage() {
     } catch {}
   }, [sourceLang, targetLang, mode]);
 
+  const detectLanguage = (text: string): string | null => {
+    if (!text.trim()) return null;
+    const clean = text.replace(/[\s\d.,!?;:'"()\-+=@#$%^&*\/\\[\]{}|`~]+/g, '');
+    if (!clean.length) return null;
+    let zh = 0, ja = 0, ko = 0, ar = 0, ru = 0, th = 0;
+    for (const ch of clean) {
+      const code = ch.charCodeAt(0);
+      if (code >= 0x4E00 && code <= 0x9FFF) zh++;
+      if (code >= 0x3040 && code <= 0x30FF) ja++;
+      if (code >= 0xAC00 && code <= 0xD7AF) ko++;
+      if (code >= 0x0600 && code <= 0x06FF) ar++;
+      if (code >= 0x0400 && code <= 0x04FF) ru++;
+      if (code >= 0x0E00 && code <= 0x0E7F) th++;
+    }
+    const total = clean.length;
+    if (zh / total > 0.2) return 'zh';
+    if (ja / total > 0.2) return 'ja';
+    if (ko / total > 0.2) return 'ko';
+    if (ar / total > 0.2) return 'ar';
+    if (ru / total > 0.2) return 'ru';
+    if (th / total > 0.2) return 'th';
+    return 'en';
+  };
+
   const handleInput = (value: string) => {
     if (value.length <= MAX_CHARS) {
       setSourceText(value);
       setCharCount(value.length);
+      if (sourceLang === 'auto') {
+        const detected = detectLanguage(value);
+        if (detected) setSourceLang(detected);
+      }
     }
   };
 
@@ -136,9 +164,6 @@ export default function TranslatePage() {
           if (!line.startsWith('data: ')) continue;
           try {
             const data = JSON.parse(line.slice(6));
-            if (data.detectedLang) {
-              setSourceLang(data.detectedLang);
-            }
             if (data.content) {
               setTranslatedText((prev) => prev + data.content);
             }

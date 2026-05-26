@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, useLayoutEffect, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 
 export type Locale = 'en' | 'zh' | 'ja' | 'ko';
 
@@ -759,21 +759,28 @@ function detectBrowserLocale(): Locale {
   return 'en';
 }
 
-export function I18nProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>('en');
+function getCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/([.$?*|{}()[\]\\/+^])/g, '\\$1') + '=([^;]*)'));
+  return match ? decodeURIComponent(match[1]) : null;
+}
 
-  useLayoutEffect(() => {
-    const saved = localStorage.getItem('locale') as Locale | null;
-    if (saved && ['en', 'zh', 'ja', 'ko'].includes(saved)) {
-      setLocaleState(saved);
-    } else {
-      setLocaleState(detectBrowserLocale());
-    }
-  }, []);
+function getInitialLocale(): Locale {
+  if (typeof window === 'undefined') return 'en';
+  const cookie = getCookie('locale');
+  if (cookie && ['en', 'zh', 'ja', 'ko'].includes(cookie)) return cookie as Locale;
+  const saved = localStorage.getItem('locale') as Locale | null;
+  if (saved && ['en', 'zh', 'ja', 'ko'].includes(saved)) return saved;
+  return detectBrowserLocale();
+}
+
+export function I18nProvider({ children }: { children: ReactNode }) {
+  const [locale, setLocaleState] = useState<Locale>(getInitialLocale);
 
   const setLocale = useCallback((l: Locale) => {
     setLocaleState(l);
     localStorage.setItem('locale', l);
+    document.cookie = `locale=${l};path=/;max-age=31536000;SameSite=Lax`;
     document.documentElement.lang = l;
   }, []);
 
