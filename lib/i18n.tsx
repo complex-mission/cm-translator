@@ -40,6 +40,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'panel.signup_hint': 'Sign up',
     'panel.signup_suffix': ' for 5000 chars and 200 translations/day.',
     'panel.swap': 'Swap languages',
+    'error.guest_limit': 'Guest daily limit reached. Please sign up for more.',
 
     // Translation modes
     'mode.general': 'General',
@@ -241,6 +242,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'panel.signup_hint': '注册',
     'panel.signup_suffix': ' 可享 5000 字符和每天 200 次翻译。',
     'panel.swap': '交换语言',
+    'error.guest_limit': '访客每日次数已用完，注册后可享更多翻译。',
 
     'mode.general': '通用',
     'mode.technical': '技术',
@@ -429,6 +431,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'panel.signup_hint': '新規登録',
     'panel.signup_suffix': ' で 5000 文字・1日200回に。',
     'panel.swap': '言語を入れ替え',
+    'error.guest_limit': 'ゲストの1日の上限に達しました。新規登録するとさらにご利用いただけます。',
 
     'mode.general': '一般',
     'mode.technical': '技術',
@@ -617,6 +620,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'panel.signup_hint': '회원가입',
     'panel.signup_suffix': ' 시 5000자, 하루 200회 이용 가능.',
     'panel.swap': '언어 교환',
+    'error.guest_limit': '게스트 일일 사용 한도에 도달했습니다. 가입하시면 더 많이 이용하실 수 있습니다.',
 
     'mode.general': '일반',
     'mode.technical': '기술',

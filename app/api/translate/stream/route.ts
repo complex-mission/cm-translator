@@ -42,6 +42,7 @@ export async function POST(req: NextRequest) {
           error: user
             ? 'Daily quota exceeded.'
             : 'Guest daily limit reached. Please sign up for more.',
+          errorCode: user ? 'user_quota' : 'guest_limit',
         },
         { status: 429 }
       );

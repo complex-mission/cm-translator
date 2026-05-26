@@ -180,7 +180,11 @@ export default function TranslatePage() {
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || 'Translation failed');
+        const translated = data.errorCode ? t(`error.${data.errorCode}`) : null;
+        const message = translated && translated !== `error.${data.errorCode}`
+          ? translated
+          : data.error || 'Translation failed';
+        throw new Error(message);
       }
 
       const reader = res.body?.getReader();
