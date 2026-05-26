@@ -109,6 +109,14 @@ export default function TranslatePage() {
     return 'en';
   };
 
+  const pickFallbackTarget = (excluded: string) => {
+    const candidates = ['en', 'zh', 'ja', 'ko'];
+    const first = candidates.find((c) => c !== excluded);
+    if (first) return first;
+    const any = SUPPORTED_LANGUAGES.find((l) => l.code !== 'auto' && l.code !== excluded);
+    return any?.code ?? 'en';
+  };
+
   const handleInput = (value: string) => {
     const wasTruncated = value.length > MAX_CHARS;
     const next = wasTruncated ? value.slice(0, MAX_CHARS) : value;
@@ -116,7 +124,11 @@ export default function TranslatePage() {
     setCharCount(next.length);
     setTruncated(wasTruncated);
     if (sourceLang === 'auto') {
-      setDetectedLang(detectLanguage(next));
+      const detected = detectLanguage(next);
+      setDetectedLang(detected);
+      if (detected && detected === targetLang) {
+        setTargetLang(pickFallbackTarget(detected));
+      }
     } else {
       setDetectedLang(null);
     }
@@ -345,7 +357,11 @@ export default function TranslatePage() {
                 }}
                 className="bg-transparent text-sm font-medium text-[var(--text-primary)] outline-none cursor-pointer max-w-[120px] sm:max-w-none"
               >
-                {SUPPORTED_LANGUAGES.filter((l) => l.code !== 'auto' && l.code !== sourceLang).map((l) => (
+                {SUPPORTED_LANGUAGES.filter((l) => {
+                  if (l.code === 'auto') return false;
+                  const effectiveSource = sourceLang === 'auto' ? detectedLang : sourceLang;
+                  return l.code !== effectiveSource;
+                }).map((l) => (
                   <option key={l.code} value={l.code}>{getLangName(l.code)}</option>
                 ))}
               </select>
