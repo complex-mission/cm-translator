@@ -8,6 +8,7 @@ export const registerSchema = z.object({
     .regex(/[a-zA-Z]/, 'Password must contain letters')
     .regex(/[0-9]/, 'Password must contain numbers'),
   nickname: z.string().min(2, 'Nickname must be 2-20 characters').max(20).optional(),
+  code: z.string().length(6, 'Verification code must be 6 digits'),
 });
 
 export const loginSchema = z.object({

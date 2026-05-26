@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { hashPassword, createAccessToken, createRefreshToken, setAuthCookies } from '@/lib/auth';
+import {
+  hashPassword,
+  createAccessToken,
+  createRefreshToken,
+  setAuthCookies,
+  verifyCode,
+} from '@/lib/auth';
 import { registerSchema } from '@/lib/validations';
 import { getRandomAvatarId } from '@/lib/middleware';
 import { checkRateLimitRedis } from '@/lib/redis';
@@ -14,11 +20,19 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { email, password, nickname } = registerSchema.parse(body);
+    const { email, password, nickname, code } = registerSchema.parse(body);
 
     const existing = await db.user.findUnique({ where: { email } });
     if (existing) {
       return NextResponse.json({ error: 'Email already registered' }, { status: 409 });
+    }
+
+    const codeOk = await verifyCode(email, code, 'register');
+    if (!codeOk) {
+      return NextResponse.json(
+        { error: 'Invalid or expired verification code' },
+        { status: 400 }
+      );
     }
 
     const passwordHash = await hashPassword(password);
@@ -38,13 +52,19 @@ export async function POST(req: NextRequest) {
     const accessToken = await createAccessToken(user.id, user.role);
     const refreshToken = await createRefreshToken(
       user.id,
-      req.headers.get('x-forwarded-for') || undefined,
+      ip,
       req.headers.get('user-agent') || undefined
     );
     await setAuthCookies(accessToken, refreshToken);
 
     return NextResponse.json({
-      user: { id: user.id.toString(), email: user.email, nickname: user.nickname, role: user.role, avatarId: user.avatarId },
+      user: {
+        id: user.id.toString(),
+        email: user.email,
+        nickname: user.nickname,
+        role: user.role,
+        avatarId: user.avatarId,
+      },
     });
   } catch (err: any) {
     if (err.name === 'ZodError') return NextResponse.json({ error: err.errors[0].message }, { status: 400 });
