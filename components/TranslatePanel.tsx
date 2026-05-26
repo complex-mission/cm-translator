@@ -26,6 +26,8 @@ export default function TranslatePage() {
   const [stats, setStats] = useState<{ tokensUsed: number; latencyMs: number } | null>(null);
   const [charCount, setCharCount] = useState(0);
   const [copied, setCopied] = useState(false);
+  const [detectedLang, setDetectedLang] = useState<string | null>(null);
+  const [truncated, setTruncated] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const MAX_CHARS = user ? 5000 : 1000;
@@ -35,11 +37,15 @@ export default function TranslatePage() {
       const raw = localStorage.getItem('prefill');
       if (raw) {
         const data = JSON.parse(raw);
-        if (data.text) setSourceText(data.text);
+        const text = typeof data.text === 'string' ? data.text.slice(0, MAX_CHARS) : '';
+        if (text) setSourceText(text);
         if (data.sourceLang) setSourceLang(data.sourceLang);
         if (data.targetLang) setTargetLang(data.targetLang);
         if (data.mode) setMode(data.mode);
-        setCharCount(data.text?.length || 0);
+        setCharCount(text.length);
+        if ((data.sourceLang ?? 'auto') === 'auto' && text) {
+          setDetectedLang(detectLanguage(text));
+        }
         localStorage.removeItem('prefill');
         return;
       }
@@ -104,13 +110,15 @@ export default function TranslatePage() {
   };
 
   const handleInput = (value: string) => {
-    if (value.length <= MAX_CHARS) {
-      setSourceText(value);
-      setCharCount(value.length);
-      if (sourceLang === 'auto') {
-        const detected = detectLanguage(value);
-        if (detected) setSourceLang(detected);
-      }
+    const wasTruncated = value.length > MAX_CHARS;
+    const next = wasTruncated ? value.slice(0, MAX_CHARS) : value;
+    setSourceText(next);
+    setCharCount(next.length);
+    setTruncated(wasTruncated);
+    if (sourceLang === 'auto') {
+      setDetectedLang(detectLanguage(next));
+    } else {
+      setDetectedLang(null);
     }
   };
 
@@ -246,24 +254,32 @@ export default function TranslatePage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Source panel */}
         <div className="relative rounded-xl border border-[var(--border)] bg-[var(--bg-secondary)] overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-2.5 border-b border-[var(--border)]">
-            <select
-              value={sourceLang}
-              onChange={(e) => {
-                const newSourceLang = e.target.value;
-                setSourceLang(newSourceLang);
-                if (newSourceLang !== 'auto' && newSourceLang === targetLang) {
-                  const available = SUPPORTED_LANGUAGES.find((l) => l.code !== 'auto' && l.code !== newSourceLang);
-                  if (available) setTargetLang(available.code);
-                }
-              }}
-              className="bg-transparent text-sm font-medium text-[var(--text-primary)] outline-none cursor-pointer max-w-[120px] sm:max-w-none"
-            >
-              {SUPPORTED_LANGUAGES.map((l) => (
-                <option key={l.code} value={l.code}>{getLangName(l.code)}</option>
-              ))}
-            </select>
-            <span className="text-xs text-[var(--text-tertiary)]">
+          <div className="flex items-center justify-between px-4 py-2.5 border-b border-[var(--border)] gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <select
+                value={sourceLang}
+                onChange={(e) => {
+                  const newSourceLang = e.target.value;
+                  setSourceLang(newSourceLang);
+                  if (newSourceLang !== 'auto') setDetectedLang(null);
+                  if (newSourceLang !== 'auto' && newSourceLang === targetLang) {
+                    const available = SUPPORTED_LANGUAGES.find((l) => l.code !== 'auto' && l.code !== newSourceLang);
+                    if (available) setTargetLang(available.code);
+                  }
+                }}
+                className="bg-transparent text-sm font-medium text-[var(--text-primary)] outline-none cursor-pointer max-w-[120px] sm:max-w-none"
+              >
+                {SUPPORTED_LANGUAGES.map((l) => (
+                  <option key={l.code} value={l.code}>{getLangName(l.code)}</option>
+                ))}
+              </select>
+              {sourceLang === 'auto' && detectedLang && (
+                <span className="text-xs text-[var(--text-tertiary)] truncate">
+                  → {getLangName(detectedLang)}
+                </span>
+              )}
+            </div>
+            <span className={`text-xs whitespace-nowrap ${truncated ? 'text-amber-500' : 'text-[var(--text-tertiary)]'}`}>
               {charCount}/{MAX_CHARS}
             </span>
           </div>
@@ -279,7 +295,15 @@ export default function TranslatePage() {
 
           <div className="flex items-center justify-between px-4 py-2 border-t border-[var(--border)]">
             <button
-              onClick={() => { setSourceText(''); setTranslatedText(''); setCharCount(0); setStats(null); }}
+              onClick={() => {
+                setSourceText('');
+                setTranslatedText('');
+                setCharCount(0);
+                setStats(null);
+                setDetectedLang(null);
+                setTruncated(false);
+                setError('');
+              }}
               className="flex items-center gap-1.5 text-xs text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors"
             >
               <Trash2 className="w-3.5 h-3.5" />

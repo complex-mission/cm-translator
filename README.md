@@ -37,11 +37,11 @@
 <td width="50%">
 
 ### 用户系统
-- **邮箱注册** — 验证码激活，argon2id 密码哈希
-- **JWT 双 Token** — Access Token (7天) + Refresh Token (30天) 无感续签
+- **邮箱注册** — 验证码激活，bcrypt 密码哈希（cost 12）
+- **双 Token 会话** — Access Token JWT (7天) + 不透明 Refresh Token (30天，SHA-256 索引查找)
 - **30 个默认头像** — 注册随机分配，个人中心随时切换
 - **隐私模式** — 开启后不存储原文与译文
-- **密码找回** — 邮箱重置链接，30 分钟有效
+- **密码找回** — 邮箱验证码重置，10 分钟有效，5 次错误锁定
 - **密码强度提示** — 实时检测并反馈
 
 </td>
@@ -73,10 +73,11 @@
 <td>
 
 ### 安全与配额
-- **分级配额** — 游客 10次/天 · 用户 200次/天
-- **速率限制** — Redis 滑动窗口，每分钟 30 次
+- **原子配额** — Redis `INCR` 保证并发场景下无超用，游客 10/天 · 用户 200/天
+- **速率限制** — Redis 滑动窗口 + Lua 原子脚本，用户 30/分钟 · 游客 10/分钟
+- **Token 安全** — Refresh Token 仅存 SHA-256 哈希，O(1) 查找；旋转 + 撤销机制
+- **启动期强校验** — 缺失 `JWT_SECRET` / `DATABASE_URL` 直接拒绝启动
 - **Prompt 注入防护** — 用户输入隔离包装
-- **敏感词检测** — 自动标记可疑翻译
 - **HTTPS 强制** — 全链路加密传输
 
 </td>
@@ -118,7 +119,7 @@
 | **数据库** | MySQL 8.0+ | 持久化存储 |
 | **ORM** | Prisma 6 | 类型安全的数据库访问 |
 | **缓存** | Redis 7 (ioredis) | 速率限制 / 滑动窗口 / 日配额 |
-| **认证** | JWT (jose) + bcryptjs | 双 Token 会话 + 密码哈希 |
+| **认证** | JWT (jose) + bcryptjs + crypto.randomBytes | Access Token JWT + 不透明 Refresh Token |
 | **AI 模型** | DeepSeek V4 Flash | 流式翻译引擎 |
 | **校验** | Zod | 请求参数验证 |
 | **图标** | Lucide React | SVG 矢量图标 |
@@ -160,12 +161,11 @@ cp .env.example .env
 # 数据库
 DATABASE_URL="mysql://root:password@localhost:3306/ai_translator"
 
-# Redis
+# Redis（缺失则回退到单实例内存限流/配额，仅适合单进程开发环境）
 REDIS_URL="redis://localhost:6379"
 
-# JWT 密钥（请替换为随机字符串）
+# JWT 签名密钥（≥32 字符，建议 64+，推荐：openssl rand -base64 48）
 JWT_SECRET="your-random-64-char-secret-here"
-JWT_REFRESH_SECRET="another-random-64-char-secret-here"
 
 # DeepSeek API
 DEEPSEEK_API_KEY="sk-your-api-key-here"
@@ -175,6 +175,8 @@ DEEPSEEK_MODEL="deepseek-v4-flash"
 # 应用地址
 NEXT_PUBLIC_APP_URL="http://127.0.0.1:65108"
 ```
+
+> Refresh Token 现在为高熵随机字符串（base64url，48 字节），仅在数据库中存储其 SHA-256 哈希，无需独立签名密钥。
 
 ### 4. 初始化数据库
 
@@ -258,13 +260,13 @@ cm-translator/
 │   └── TranslatePanel.tsx            # 翻译核心面板 (i18n + SVG)
 │
 ├── lib/                              # 工具库
-│   ├── auth.ts                       # JWT / 密码哈希 / 验证码
+│   ├── auth.ts                       # Access Token JWT + 不透明 Refresh Token + 密码哈希
 │   ├── db.ts                         # Prisma 客户端单例
 │   ├── deepseek.ts                   # DeepSeek API 封装 (流式 + 同步)
 │   ├── i18n.tsx                      # i18n 系统 (I18nProvider / useI18n / 四语翻译)
 │   ├── middleware.ts                 # 认证助手 + 头像工具
-│   ├── redis.ts                      # Redis 客户端 + 限流算法
-│   └── validations.ts               # Zod 校验 Schema
+│   ├── redis.ts                      # Lua 滑动窗口限流 + 原子配额消费
+│   └── validations.ts                # Zod 校验 Schema
 │
 ├── prisma/
 │   ├── schema.prisma                 # 数据库模型定义
@@ -272,9 +274,9 @@ cm-translator/
 │
 ├── public/
 │   └── avatar/                       # 30 个默认头像
-│       ├── a-01.svg ~ a-10.svg       #   Pixelscape 像素风景
-│       ├── a-11.svg ~ a-20.svg       #   Wave 浮世绘波浪
-│       └── a-21.svg ~ a-30.svg       #   Monster 像素小怪物
+│       ├── a-01.webp ~ a-10.webp     #   Pixelscape 像素风景
+│       ├── a-11.webp ~ a-20.webp     #   Wave 浮世绘波浪
+│       └── a-21.webp ~ a-30.webp     #   Monster 像素小怪物
 │
 ├── middleware.ts                     # Next.js 中间件 (安全头)
 ├── next.config.js                    # Next.js 配置
@@ -466,11 +468,11 @@ erDiagram
 
 | 编号 | 文件名 | 说明 |
 |------|--------|------|
-| 1 - 10 | `a-01.svg` ~ `a-10.svg` | Pixelscape 像素风景 |
-| 11 - 20 | `a-11.svg` ~ `a-20.svg` | Wave 浮世绘波浪 |
-| 21 - 30 | `a-21.svg` ~ `a-30.svg` | Monster 像素小怪物 |
+| 1 - 10 | `a-01.webp` ~ `a-10.webp` | Pixelscape 像素风景 |
+| 11 - 20 | `a-11.webp` ~ `a-20.webp` | Wave 浮世绘波浪 |
+| 21 - 30 | `a-21.webp` ~ `a-30.webp` | Monster 像素小怪物 |
 
-> 当前 `public/avatar/` 下为 SVG 文件，部署前可替换为自定义头像。
+> 头像文件名约定为 `a-{id}.webp`，`id` 范围 1-30。部署前请将素材放入 `public/avatar/` 目录。
 
 ---
 
@@ -480,12 +482,44 @@ erDiagram
 |------|:----:|--------|------|
 | `DATABASE_URL` | ✅ | — | MySQL 连接串 |
 | `REDIS_URL` | ✅ | — | Redis 连接地址 |
-| `JWT_SECRET` | ✅ | — | Access Token 签名密钥 (≥64 字符) |
-| `JWT_REFRESH_SECRET` | ✅ | — | Refresh Token 签名密钥 (≥64 字符) |
+| `JWT_SECRET` | ✅ | — | Access Token 签名密钥（≥32 字符，启动时强校验） |
 | `DEEPSEEK_API_KEY` | ✅ | — | DeepSeek API Key |
 | `DEEPSEEK_BASE_URL` | ❌ | `https://api.deepseek.com` | API 基础地址 |
 | `DEEPSEEK_MODEL` | ❌ | `deepseek-v4-flash` | 模型名称 |
 | `NEXT_PUBLIC_APP_URL` | ❌ | `http://127.0.0.1:65108` | 应用公开地址 |
+
+---
+
+## 安全设计
+
+### Token 与会话
+- **Access Token**：JWT (HS256)，载荷仅含 `sub` 和 `role`，TTL 7 天，存放于 `HttpOnly` Cookie。
+- **Refresh Token**：`crypto.randomBytes(48)` 生成的 base64url 字符串（≈384 bit 熵），明文仅返回给客户端；服务端只存 SHA-256 哈希值并对哈希列建唯一索引，登录验证为 O(1) 查找。Cookie 限定 `Path=/api/auth`，避免在普通 API 中泄露。
+- **轮换 (Rotation)**：每次 `/api/auth/refresh` 调用都会撤销旧 Refresh Token 并签发新对，泄露的 token 被使用一次后即作废。
+- **强制启动校验**：缺失或长度不足 32 的 `JWT_SECRET` 会让进程在启动阶段直接抛错退出。
+
+### 限流与配额
+- **滑动窗口限流**：Redis 的 `EVAL` Lua 脚本原子执行 `ZREMRANGEBYSCORE → ZCARD → ZADD`，避免被拒请求污染窗口计数。
+- **每日配额**：`INCR` + 超额回滚 (`DECR`)，并发安全；无 Redis 时回退到单进程内存实现。
+- **Token 计数与配额计数分离**：配额前置原子消费用于准入控制，Token 用量在翻译完成后异步累计。
+
+### 数据保护
+- 密码：bcrypt cost 12（注册）/ cost 10（验证码）。
+- 翻译记录：用户开启隐私模式后 `source_text` / `translated_text` 写入为 `NULL`，仅保留元数据。
+- 邮箱验证码：哈希存储，5 次错误锁定，单次有效。
+
+### 从旧版本升级
+本次更新调整了 `refresh_tokens.token_hash` 的存储方式（从 bcrypt 改为 SHA-256）并加上了唯一约束。升级步骤：
+
+```bash
+# 撤销所有现存会话（推荐，避免数据混用）
+mysql> TRUNCATE TABLE refresh_tokens;
+
+# 同步新 schema
+npx prisma db push
+```
+
+升级后所有用户需重新登录。同时移除了 `JWT_REFRESH_SECRET` 环境变量。
 
 ---
 
@@ -504,7 +538,6 @@ services:
       - DATABASE_URL=mysql://root:password@db:3306/ai_translator
       - REDIS_URL=redis://redis:6379
       - JWT_SECRET=your-secret
-      - JWT_REFRESH_SECRET=your-refresh-secret
       - DEEPSEEK_API_KEY=sk-your-key
     depends_on:
       - db

@@ -1,10 +1,13 @@
-import { db } from './db';
 import { Globe, Code, BookOpen, MessageCircle, PenTool } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || '';
 const DEEPSEEK_BASE_URL = process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com';
 const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL || 'deepseek-v4-flash';
+
+if (!DEEPSEEK_API_KEY && process.env.NODE_ENV === 'production') {
+  console.warn('DEEPSEEK_API_KEY is not set — translation requests will fail.');
+}
 
 const MODE_PROMPTS: Record<string, string> = {
   general: `You are a professional translator. Translate the following text accurately and naturally. Preserve the original meaning, tone, and formatting. Only output the translation, nothing else.`,
@@ -19,15 +22,11 @@ export interface TranslateOptions {
   sourceLang: string;
   targetLang: string;
   mode?: string;
-  userId?: bigint;
-  ip?: string;
-  userAgent?: string;
 }
 
 export interface TranslateStreamResult {
   stream: ReadableStream;
   controller: AbortController;
-  detectedLang?: string;
 }
 
 export async function translateStream(opts: TranslateOptions): Promise<TranslateStreamResult> {

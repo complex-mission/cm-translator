@@ -1,16 +1,25 @@
 import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
+import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { db } from './db';
-import { nanoid } from 'nanoid';
 import { hash, compare } from 'bcryptjs';
 
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'fallback-secret-change-me');
-const JWT_REFRESH_SECRET = new TextEncoder().encode(process.env.JWT_REFRESH_SECRET || 'fallback-refresh-secret-change-me');
+function requireSecret(name: string): Uint8Array {
+  const value = process.env[name];
+  if (!value || value.length < 32) {
+    throw new Error(
+      `${name} is required and must be at least 32 characters. Set it in your environment before starting the app.`
+    );
+  }
+  return new TextEncoder().encode(value);
+}
+
+const JWT_SECRET = requireSecret('JWT_SECRET');
 
 const ACCESS_TOKEN_EXPIRY = '7d';
 const REFRESH_TOKEN_EXPIRY_DAYS = 30;
+const REFRESH_TOKEN_BYTES = 48;
 
-// --- Password ---
 export async function hashPassword(password: string): Promise<string> {
   return hash(password, 12);
 }
@@ -19,7 +28,6 @@ export async function verifyPassword(password: string, hashed: string): Promise<
   return compare(password, hashed);
 }
 
-// --- Access Token (JWT) ---
 export async function createAccessToken(userId: bigint, role: string): Promise<string> {
   return new SignJWT({ sub: userId.toString(), role })
     .setProtectedHeader({ alg: 'HS256' })
@@ -37,14 +45,26 @@ export async function verifyAccessToken(token: string) {
   }
 }
 
-// --- Refresh Token ---
+function hashRefreshToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex');
+}
+
+function safeEqualHex(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  try {
+    return timingSafeEqual(Buffer.from(a, 'hex'), Buffer.from(b, 'hex'));
+  } catch {
+    return false;
+  }
+}
+
 export async function createRefreshToken(
   userId: bigint,
   ip?: string,
   userAgent?: string
 ): Promise<string> {
-  const token = nanoid(64);
-  const tokenHash = await hash(token, 10);
+  const token = randomBytes(REFRESH_TOKEN_BYTES).toString('base64url');
+  const tokenHash = hashRefreshToken(token);
   const expiresAt = new Date(Date.now() + REFRESH_TOKEN_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
 
   await db.refreshToken.create({
@@ -55,22 +75,26 @@ export async function createRefreshToken(
 }
 
 export async function verifyRefreshToken(token: string) {
-  const tokens = await db.refreshToken.findMany({
-    where: { revokedAt: null, expiresAt: { gt: new Date() } },
+  if (!token) return null;
+  const tokenHash = hashRefreshToken(token);
+
+  const record = await db.refreshToken.findUnique({
+    where: { tokenHash },
     include: { user: true },
   });
 
-  for (const record of tokens) {
-    const match = await compare(token, record.tokenHash);
-    if (match) {
-      await db.refreshToken.update({
-        where: { id: record.id },
-        data: { lastUsedAt: new Date() },
-      });
-      return { user: record.user, tokenId: record.id };
-    }
-  }
-  return null;
+  if (!record) return null;
+  if (record.revokedAt) return null;
+  if (record.expiresAt <= new Date()) return null;
+  if (!safeEqualHex(record.tokenHash, tokenHash)) return null;
+  if (!record.user || record.user.status !== 'active') return null;
+
+  await db.refreshToken.update({
+    where: { id: record.id },
+    data: { lastUsedAt: new Date() },
+  });
+
+  return { user: record.user, tokenId: record.id };
 }
 
 export async function revokeRefreshToken(tokenId: bigint) {
@@ -87,21 +111,20 @@ export async function revokeAllUserTokens(userId: bigint) {
   });
 }
 
-// --- Cookie helpers ---
 export async function setAuthCookies(accessToken: string, refreshToken: string) {
   const cookieStore = await cookies();
   cookieStore.set('access_token', accessToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
-    maxAge: 7 * 24 * 60 * 60, // 7 days
+    maxAge: 7 * 24 * 60 * 60,
     path: '/',
   });
   cookieStore.set('refresh_token', refreshToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    maxAge: REFRESH_TOKEN_EXPIRY_DAYS * 24 * 60 * 60,
     path: '/api/auth',
   });
 }
@@ -112,15 +135,13 @@ export async function clearAuthCookies() {
   cookieStore.delete('refresh_token');
 }
 
-// --- Verification codes ---
 export async function createVerificationCode(email: string, purpose: 'register' | 'reset' | 'change_email') {
   const code = Math.floor(100000 + Math.random() * 900000).toString();
   const codeHash = await hash(code, 10);
-  const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-  // Rate limit: 1 per 60s
   const recent = await db.emailVerification.findFirst({
-    where: { email, purpose, createdAt: { gt: new Date(Date.now() - 60000) } },
+    where: { email, purpose, createdAt: { gt: new Date(Date.now() - 60_000) } },
   });
   if (recent) throw new Error('RATE_LIMITED');
 
