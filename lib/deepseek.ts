@@ -5,7 +5,7 @@ const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || '';
 const DEEPSEEK_BASE_URL = process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com';
 const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL || 'deepseek-v4-flash';
 
-if (!DEEPSEEK_API_KEY && process.env.NODE_ENV === 'production') {
+if (typeof window === 'undefined' && !DEEPSEEK_API_KEY && process.env.NODE_ENV === 'production') {
   console.warn('DEEPSEEK_API_KEY is not set — translation requests will fail.');
 }
 

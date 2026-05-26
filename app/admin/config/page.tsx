@@ -1,9 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { AuthProvider, useAuth } from '@/components/AuthProvider';
-import { ThemeProvider } from '@/components/ThemeProvider';
-import { I18nProvider, useI18n } from '@/lib/i18n';
+import { useAuth } from '@/components/AuthProvider';
+import { useI18n } from '@/lib/i18n';
 import Header from '@/components/Header';
 import Link from 'next/link';
 import { ArrowLeft, Save } from 'lucide-react';
@@ -88,7 +87,5 @@ function ConfigContent() {
 }
 
 export default function AdminConfigPage() {
-  return (
-    <ThemeProvider><I18nProvider><AuthProvider><ConfigContent /></AuthProvider></I18nProvider></ThemeProvider>
-  );
+  return <ConfigContent />;
 }

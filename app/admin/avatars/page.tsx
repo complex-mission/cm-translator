@@ -1,8 +1,7 @@
 'use client';
 
-import { AuthProvider, useAuth } from '@/components/AuthProvider';
-import { ThemeProvider } from '@/components/ThemeProvider';
-import { I18nProvider, useI18n } from '@/lib/i18n';
+import { useAuth } from '@/components/AuthProvider';
+import { useI18n } from '@/lib/i18n';
 import Header from '@/components/Header';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
@@ -40,7 +39,5 @@ function AvatarsContent() {
 }
 
 export default function AdminAvatarsPage() {
-  return (
-    <ThemeProvider><I18nProvider><AuthProvider><AvatarsContent /></AuthProvider></I18nProvider></ThemeProvider>
-  );
+  return <AvatarsContent />;
 }

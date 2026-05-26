@@ -9,7 +9,7 @@ async function main() {
   console.log('\n=== CM Translator Startup ===\n');
 
   console.log('[1/3] Syncing database schema...');
-  run('npx prisma db push --skip-generate');
+  run('npx prisma db push');
 
   console.log('\n[2/3] Seeding default accounts...');
   run('npx tsx prisma/seed.ts');

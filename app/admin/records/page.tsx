@@ -1,9 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { AuthProvider, useAuth } from '@/components/AuthProvider';
-import { ThemeProvider } from '@/components/ThemeProvider';
-import { I18nProvider, useI18n } from '@/lib/i18n';
+import { useAuth } from '@/components/AuthProvider';
+import { useI18n } from '@/lib/i18n';
 import Header from '@/components/Header';
 import Link from 'next/link';
 import { AlertTriangle } from 'lucide-react';
@@ -67,7 +66,5 @@ function RecordsContent() {
 }
 
 export default function AdminRecordsPage() {
-  return (
-    <ThemeProvider><I18nProvider><AuthProvider><RecordsContent /></AuthProvider></I18nProvider></ThemeProvider>
-  );
+  return <RecordsContent />;
 }

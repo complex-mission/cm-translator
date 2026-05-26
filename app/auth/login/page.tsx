@@ -3,13 +3,14 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ThemeProvider } from '@/components/ThemeProvider';
-import { I18nProvider, useI18n } from '@/lib/i18n';
+import { useI18n } from '@/lib/i18n';
+import { useAuth } from '@/components/AuthProvider';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 
 function LoginContent() {
   const router = useRouter();
   const { t } = useI18n();
+  const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -21,19 +22,8 @@ function LoginContent() {
     setLoading(true);
 
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Login failed');
-      }
-
+      await login(email, password);
       router.push('/');
-      router.refresh();
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -107,11 +97,5 @@ function LoginContent() {
 }
 
 export default function LoginPage() {
-  return (
-    <ThemeProvider>
-      <I18nProvider>
-        <LoginContent />
-      </I18nProvider>
-    </ThemeProvider>
-  );
+  return <LoginContent />;
 }

@@ -1,12 +1,10 @@
 'use client';
 
-import { AuthProvider } from '@/components/AuthProvider';
-import { ThemeProvider } from '@/components/ThemeProvider';
-import { I18nProvider, useI18n } from '@/lib/i18n';
+import { useI18n } from '@/lib/i18n';
 import Header from '@/components/Header';
 import TranslatePanel from '@/components/TranslatePanel';
 
-function HomeContent() {
+export default function HomePage() {
   const { t } = useI18n();
 
   return (
@@ -30,14 +28,3 @@ function HomeContent() {
   );
 }
 
-export default function HomePage() {
-  return (
-    <ThemeProvider>
-      <I18nProvider>
-        <AuthProvider>
-          <HomeContent />
-        </AuthProvider>
-      </I18nProvider>
-    </ThemeProvider>
-  );
-}

@@ -3,8 +3,7 @@
 import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ThemeProvider } from '@/components/ThemeProvider';
-import { I18nProvider, useI18n } from '@/lib/i18n';
+import { useI18n } from '@/lib/i18n';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 
 function ResetPasswordContent() {
@@ -152,12 +151,8 @@ function ResetPasswordContent() {
 
 export default function ResetPasswordPage() {
   return (
-    <ThemeProvider>
-      <I18nProvider>
-        <Suspense>
-          <ResetPasswordContent />
-        </Suspense>
-      </I18nProvider>
-    </ThemeProvider>
+    <Suspense>
+      <ResetPasswordContent />
+    </Suspense>
   );
 }

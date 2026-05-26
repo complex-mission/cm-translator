@@ -3,8 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ThemeProvider } from '@/components/ThemeProvider';
-import { I18nProvider, useI18n } from '@/lib/i18n';
+import { useI18n } from '@/lib/i18n';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 
 function ForgotPasswordContent() {
@@ -99,11 +98,5 @@ function ForgotPasswordContent() {
 }
 
 export default function ForgotPasswordPage() {
-  return (
-    <ThemeProvider>
-      <I18nProvider>
-        <ForgotPasswordContent />
-      </I18nProvider>
-    </ThemeProvider>
-  );
+  return <ForgotPasswordContent />;
 }

@@ -9,7 +9,7 @@
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.5-3178C6?logo=typescript)](https://www.typescriptlang.org/)
-[![Prisma](https://img.shields.io/badge/Prisma-6-2D3748?logo=prisma)](https://www.prisma.io/)
+[![Prisma](https://img.shields.io/badge/Prisma-7-2D3748?logo=prisma)](https://www.prisma.io/)
 [![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?logo=mysql)](https://www.mysql.com/)
 [![Redis](https://img.shields.io/badge/Redis-7-DC382D?logo=redis)](https://redis.io/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-3-06B6D4?logo=tailwindcss)](https://tailwindcss.com/)
@@ -117,7 +117,7 @@
 | **前端** | React 19 + Tailwind CSS | 组件化 UI + 原子化样式 |
 | **语言** | TypeScript 5.5 | 全栈类型安全 |
 | **数据库** | MySQL 8.0+ | 持久化存储 |
-| **ORM** | Prisma 6 | 类型安全的数据库访问 |
+| **ORM** | Prisma 7 (Driver Adapter + MariaDB) | 类型安全的数据库访问，原生 ESM 客户端 |
 | **缓存** | Redis 7 (ioredis) | 速率限制 / 滑动窗口 / 日配额 |
 | **认证** | JWT (jose) + bcryptjs + crypto.randomBytes | Access Token JWT + 不透明 Refresh Token |
 | **AI 模型** | DeepSeek V4 Flash | 流式翻译引擎 |
@@ -131,7 +131,7 @@
 
 ### 环境要求
 
-- **Node.js** ≥ 18
+- **Node.js** ≥ 20.19（Prisma 7 要求）
 - **MySQL** ≥ 8.0
 - **Redis** ≥ 6.0
 - **DeepSeek API Key** — [获取地址](https://platform.deepseek.com/)
@@ -254,6 +254,7 @@ cm-translator/
 │   └── page.tsx                      # 首页（翻译主界面，i18n）
 │
 ├── components/                       # React 组件
+│   ├── Providers.tsx                 # 集中挂载 Theme/I18n/Auth Provider（由根 layout 注入服务端解析的 locale）
 │   ├── AuthProvider.tsx              # 认证上下文 + useAuth Hook
 │   ├── ThemeProvider.tsx             # 主题切换 (亮/暗/跟随系统)
 │   ├── Header.tsx                    # 顶部导航栏 + 语言切换器 + 用户菜单
@@ -261,16 +262,18 @@ cm-translator/
 │
 ├── lib/                              # 工具库
 │   ├── auth.ts                       # Access Token JWT + 不透明 Refresh Token + 密码哈希
-│   ├── db.ts                         # Prisma 客户端单例
+│   ├── db.ts                         # Prisma 客户端单例 + MariaDB Driver Adapter
 │   ├── deepseek.ts                   # DeepSeek API 封装 (流式 + 同步)
-│   ├── i18n.tsx                      # i18n 系统 (I18nProvider / useI18n / 四语翻译)
+│   ├── i18n.tsx                      # i18n 系统 (支持 initialLocale prop)
 │   ├── middleware.ts                 # 认证助手 + 头像工具
 │   ├── redis.ts                      # Lua 滑动窗口限流 + 原子配额消费
 │   └── validations.ts                # Zod 校验 Schema
 │
 ├── prisma/
-│   ├── schema.prisma                 # 数据库模型定义
+│   ├── schema.prisma                 # 数据库模型定义（不含 datasource.url）
 │   └── seed.ts                       # 种子数据脚本
+│
+├── generated/prisma/                 # Prisma 7 生成的客户端（已 gitignore）
 │
 ├── public/
 │   └── avatar/                       # 30 个默认头像
@@ -279,6 +282,7 @@ cm-translator/
 │       └── a-21.webp ~ a-30.webp     #   Monster 像素小怪物
 │
 ├── middleware.ts                     # Next.js 中间件 (安全头)
+├── prisma.config.ts                  # Prisma 7 配置（DATABASE_URL 来源）
 ├── next.config.js                    # Next.js 配置
 ├── tailwind.config.js                # Tailwind CSS 配置
 ├── tsconfig.json                     # TypeScript 配置
@@ -509,17 +513,26 @@ erDiagram
 - 邮箱验证码：哈希存储，5 次错误锁定，单次有效。
 
 ### 从旧版本升级
-本次更新调整了 `refresh_tokens.token_hash` 的存储方式（从 bcrypt 改为 SHA-256）并加上了唯一约束。升级步骤：
+
+本次更新涉及两项不兼容变更：
+
+**1. Refresh Token 存储格式**
+`refresh_tokens.token_hash` 从 bcrypt 哈希改为 SHA-256，并加唯一约束。所有旧 token 在新代码下无法验证。
 
 ```bash
-# 撤销所有现存会话（推荐，避免数据混用）
 mysql> TRUNCATE TABLE refresh_tokens;
-
-# 同步新 schema
 npx prisma db push
 ```
 
-升级后所有用户需重新登录。同时移除了 `JWT_REFRESH_SECRET` 环境变量。
+升级后所有用户需重新登录。同时 `JWT_REFRESH_SECRET` 环境变量已废弃，可删除。
+
+**2. Prisma 6 → 7**
+Prisma 7 是破坏性大版本升级，本项目已完成迁移：
+- 使用新的 `prisma-client` 生成器，客户端输出到 `generated/prisma/`（已加入 `.gitignore`）
+- 改用 `@prisma/adapter-mariadb` Driver Adapter，与 MySQL 8 完全兼容
+- 数据库连接串从 `schema.prisma` 移到 `prisma.config.ts`，由 `dotenv` 加载
+
+升级到本版本只需 `npm install` + `npm run build`，无需手动处理；`postinstall` 钩子会自动生成 client。
 
 ---
 

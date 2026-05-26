@@ -1,9 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { AuthProvider, useAuth } from '@/components/AuthProvider';
-import { ThemeProvider } from '@/components/ThemeProvider';
-import { I18nProvider, useI18n } from '@/lib/i18n';
+import { useAuth } from '@/components/AuthProvider';
+import { useI18n } from '@/lib/i18n';
 import Header from '@/components/Header';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
@@ -91,7 +90,5 @@ function UsersContent() {
 }
 
 export default function AdminUsersPage() {
-  return (
-    <ThemeProvider><I18nProvider><AuthProvider><UsersContent /></AuthProvider></I18nProvider></ThemeProvider>
-  );
+  return <UsersContent />;
 }

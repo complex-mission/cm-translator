@@ -774,8 +774,20 @@ function getInitialLocale(): Locale {
   return detectBrowserLocale();
 }
 
-export function I18nProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>(getInitialLocale);
+export function I18nProvider({
+  children,
+  initialLocale,
+}: {
+  children: ReactNode;
+  initialLocale?: Locale;
+}) {
+  const [locale, setLocaleState] = useState<Locale>(initialLocale ?? 'en');
+
+  useEffect(() => {
+    if (initialLocale) return;
+    const detected = getInitialLocale();
+    if (detected !== 'en') setLocaleState(detected);
+  }, [initialLocale]);
 
   const setLocale = useCallback((l: Locale) => {
     setLocaleState(l);

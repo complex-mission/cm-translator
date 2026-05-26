@@ -1,9 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { AuthProvider, useAuth } from '@/components/AuthProvider';
-import { ThemeProvider } from '@/components/ThemeProvider';
-import { I18nProvider, useI18n } from '@/lib/i18n';
+import { useAuth } from '@/components/AuthProvider';
+import { useI18n } from '@/lib/i18n';
 import Header from '@/components/Header';
 import { SUPPORTED_LANGUAGES } from '@/lib/deepseek';
 import { Copy, ArrowRightLeft, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
@@ -193,13 +192,5 @@ function HistoryContent() {
 }
 
 export default function HistoryPage() {
-  return (
-    <ThemeProvider>
-      <I18nProvider>
-        <AuthProvider>
-          <HistoryContent />
-        </AuthProvider>
-      </I18nProvider>
-    </ThemeProvider>
-  );
+  return <HistoryContent />;
 }
