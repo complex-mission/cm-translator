@@ -4,10 +4,19 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
+import { franc } from 'franc-min';
 import { useAuth } from '@/components/AuthProvider';
 import { useI18n } from '@/lib/i18n';
 import { SUPPORTED_LANGUAGES, TRANSLATION_MODES } from '@/lib/deepseek';
 import { ArrowRightLeft, Copy, Check, Square, Languages, Trash2, BookA } from 'lucide-react';
+
+const FRANC_TO_ISO: Record<string, string> = {
+  cmn: 'zh', jpn: 'ja', kor: 'ko', eng: 'en', fra: 'fr',
+  deu: 'de', spa: 'es', por: 'pt', rus: 'ru', arb: 'ar',
+  ita: 'it', nld: 'nl', pol: 'pl', tha: 'th', vie: 'vi',
+  ind: 'id', tur: 'tr', hin: 'hi', ukr: 'uk',
+};
+const FRANC_ALLOWED = Object.keys(FRANC_TO_ISO);
 
 export default function TranslatePage() {
   const { user, loading } = useAuth();
@@ -82,28 +91,38 @@ export default function TranslatePage() {
     } catch {}
   }, [sourceLang, targetLang, mode]);
 
-  const detectLanguage = (text: string): string | null => {
-    if (!text.trim()) return null;
+  const detectByScript = (text: string): string | null => {
     const clean = text.replace(/[\s\d.,!?;:'"()\-+=@#$%^&*\/\\[\]{}|`~]+/g, '');
     if (!clean.length) return null;
-    let zh = 0, ja = 0, ko = 0, ar = 0, ru = 0, th = 0;
+    let han = 0, kana = 0, hangul = 0, ar = 0, ru = 0, th = 0;
     for (const ch of clean) {
-      const code = ch.charCodeAt(0);
-      if (code >= 0x4E00 && code <= 0x9FFF) zh++;
-      if (code >= 0x3040 && code <= 0x30FF) ja++;
-      if (code >= 0xAC00 && code <= 0xD7AF) ko++;
-      if (code >= 0x0600 && code <= 0x06FF) ar++;
-      if (code >= 0x0400 && code <= 0x04FF) ru++;
-      if (code >= 0x0E00 && code <= 0x0E7F) th++;
+      const c = ch.charCodeAt(0);
+      if ((c >= 0x3040 && c <= 0x309F) || (c >= 0x30A0 && c <= 0x30FF)) kana++;
+      else if (c >= 0x4E00 && c <= 0x9FFF) han++;
+      else if (c >= 0xAC00 && c <= 0xD7AF) hangul++;
+      else if (c >= 0x0600 && c <= 0x06FF) ar++;
+      else if (c >= 0x0400 && c <= 0x04FF) ru++;
+      else if (c >= 0x0E00 && c <= 0x0E7F) th++;
     }
     const total = clean.length;
-    if (zh / total > 0.2) return 'zh';
-    if (ja / total > 0.2) return 'ja';
-    if (ko / total > 0.2) return 'ko';
+    if (kana > 0) return 'ja';
+    if (hangul / total > 0.2) return 'ko';
     if (ar / total > 0.2) return 'ar';
-    if (ru / total > 0.2) return 'ru';
     if (th / total > 0.2) return 'th';
-    return 'en';
+    if (ru / total > 0.2) return 'ru';
+    if (han / total > 0.2) return 'zh';
+    return null;
+  };
+
+  const detectLanguage = (text: string): string | null => {
+    if (!text.trim()) return null;
+    // Kana is a sufficient signal — skip franc to avoid mis-classifying
+    // mixed kanji-heavy Japanese as Chinese.
+    const hasKana = /[぀-ヿ]/.test(text);
+    if (hasKana) return 'ja';
+    const code = franc(text, { only: FRANC_ALLOWED, minLength: 3 });
+    if (code !== 'und' && FRANC_TO_ISO[code]) return FRANC_TO_ISO[code];
+    return detectByScript(text) ?? 'en';
   };
 
   const pickFallbackTarget = (excluded: string) => {
