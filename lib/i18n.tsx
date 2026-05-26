@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useLayoutEffect, useCallback, ReactNode } from 'react';
 
 export type Locale = 'en' | 'zh' | 'ja' | 'ko';
 
@@ -762,7 +762,7 @@ function detectBrowserLocale(): Locale {
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>('en');
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const saved = localStorage.getItem('locale') as Locale | null;
     if (saved && ['en', 'zh', 'ja', 'ko'].includes(saved)) {
       setLocaleState(saved);
