@@ -198,19 +198,20 @@ export default function TranslatePage() {
       <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-2 scrollbar-hide">
         {TRANSLATION_MODES.map((m) => {
           const Icon = m.iconComponent;
+          const isActive = mode === m.id;
           return (
             <button
               key={m.id}
               onClick={() => setMode(m.id)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm whitespace-nowrap transition-all ${
-                mode === m.id
-                  ? 'bg-[var(--accent)] text-white shadow-sm'
-                  : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--border)]'
+              className={`flex items-center gap-1.5 text-sm whitespace-nowrap transition-all ${
+                isActive
+                  ? 'px-3 py-1.5 rounded-full bg-[var(--accent)] text-white shadow-sm'
+                  : 'w-9 h-9 sm:w-auto sm:h-auto sm:px-3 sm:py-1.5 rounded-full sm:rounded-full justify-center sm:justify-start bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--border)]'
               }`}
               title={getModeDesc(m.id)}
             >
               <Icon className="w-4 h-4" />
-              <span className="hidden sm:inline">{getModeName(m.id)}</span>
+              <span className={isActive ? 'inline' : 'hidden sm:inline'}>{getModeName(m.id)}</span>
             </button>
           );
         })}
